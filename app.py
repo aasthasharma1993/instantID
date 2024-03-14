@@ -47,17 +47,17 @@ app = FaceAnalysis(
     providers=["CPUExecutionProvider"],
 )
 app.prepare(ctx_id=0, det_size=(320, 320))
-torch_dtype = torch.float32
+#torch_dtype = torch.float32
 
 controlnet = ControlNetModel.from_pretrained(
     controlnet_path,
-    torch_dtype=torch_dtype,
+    torch_dtype=dtype,
     resume_download=True,
 )
 pipe = StableDiffusionXLInstantIDPipeline.from_pretrained(
     base_model,
     controlnet=controlnet,
-    torch_dtype=torch_dtype,
+    torch_dtype=dtype,
     resume_download=True,
 )
 pipe.load_ip_adapter_instantid(face_adapter)
