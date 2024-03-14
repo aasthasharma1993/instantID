@@ -37,8 +37,8 @@ current_directory = os.path.dirname(os.path.abspath(__file__))
 # Update the model paths to use absolute paths
 face_adapter = os.path.join(current_directory, "models/sdxl/ip-adapter.bin")
 controlnet_path = os.path.join(current_directory, "models/sdxl/ControlNetModel")
-image_path = os.path.join(current_directory, "kaifu_resize.png")
-output_image_path = os.path.join(current_directory, "kaifu_resize_output.png")
+image_path = os.path.join(current_directory, "input/kaifu_resize.png")
+output_image_path = os.path.join(current_directory, "output/kaifu_resize_output.png")
 
 
 app = FaceAnalysis(
