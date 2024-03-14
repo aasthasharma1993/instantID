@@ -1,5 +1,7 @@
+import os
 from concurrent.futures import ThreadPoolExecutor
 from time import time
+from PIL import Image
 
 import cv2
 import gradio as gr
@@ -15,17 +17,33 @@ from pipeline_stable_diffusion_xl_instantid import (
     draw_kps,
 )
 
-face_adapter = f"./models/sdxl/ip-adapter.bin"
-controlnet_path = f"./models/sdxl/ControlNetModel"
+def get_torch_device():
+    if torch.cuda.is_available():
+        return torch.device(torch.cuda.current_device())
+    else:
+        return torch.device("cpu")
+    
+    
 base_model = "stabilityai/sdxl-turbo"
 APP_VERSION = "0.1.0"
-device = "cpu"
+# device = "cpu"
+device = get_torch_device()
+dtype = torch.float16 if str(device).__contains__("cuda") else torch.float32
+# download_instant_id_sdxl_models()
 
-download_instant_id_sdxl_models()
+# Get the absolute path of the current directory
+current_directory = os.path.dirname(os.path.abspath(__file__))
+
+# Update the model paths to use absolute paths
+face_adapter = os.path.join(current_directory, "models/sdxl/ip-adapter.bin")
+controlnet_path = os.path.join(current_directory, "models/sdxl/ControlNetModel")
+image_path = os.path.join(current_directory, "kaifu_resize.png")
+output_image_path = os.path.join(current_directory, "kaifu_resize_output.png")
+
 
 app = FaceAnalysis(
     name="antelopev2",
-    root="./",
+    root=current_directory,
     providers=["CPUExecutionProvider"],
 )
 app.prepare(ctx_id=0, det_size=(320, 320))
@@ -119,6 +137,8 @@ def process_image(
         images = future.result()
     elapsed = time() - tick
     print(f"Latency : {elapsed:.2f} seconds")
+    images[0].save(output_image_path)
+    print(f"Image saved ")
     return images[0]
 
 
@@ -138,75 +158,86 @@ css = """
 """
 
 
-def get_web_ui() -> gr.Blocks:
-    with gr.Blocks(
-        css=css,
-        title="InstantID CPU",
-    ) as web_ui:
-        gr.HTML("<center><H1>InstantID CPU</H1></center>")
-        with gr.Row():
-            with gr.Column():
-                input_image = gr.Image(
-                    label="Face image",
-                    type="pil",
-                    height=512,
-                )
-                with gr.Row():
-                    prompt = gr.Textbox(
-                        show_label=False,
-                        lines=3,
-                        placeholder="Oil painting",
-                        container=False,
-                    )
 
-                    generate_btn = gr.Button(
-                        "Generate",
-                        elem_id="generate_button",
-                        scale=0,
-                    )
-                identitynet_strength_ratio = gr.Slider(
-                    label="IdentityNet strength (for fidelity)",
-                    minimum=0,
-                    maximum=1.5,
-                    step=0.05,
-                    value=0.80,
-                )
-                adapter_strength_ratio = gr.Slider(
-                    label="Image adapter strength (for detail)",
-                    minimum=0,
-                    maximum=1.5,
-                    step=0.05,
-                    value=0.80,
-                )
+# def get_web_ui() -> gr.Blocks:
+#     with gr.Blocks(
+#         css=css,
+#         title="InstantID CPU",
+#     ) as web_ui:
+#         gr.HTML("<center><H1>InstantID CPU</H1></center>")
+#         with gr.Row():
+#             with gr.Column():
+#                 input_image = gr.Image(
+#                     label="Face image",
+#                     type="pil",
+#                     height=512,
+#                 )
+#                 with gr.Row():
+#                     prompt = gr.Textbox(
+#                         show_label=False,
+#                         lines=3,
+#                         placeholder="Oil painting",
+#                         container=False,
+#                     )
 
-                input_params = [
-                    input_image,
-                    prompt,
-                    identitynet_strength_ratio,
-                    adapter_strength_ratio,
-                ]
+#                     generate_btn = gr.Button(
+#                         "Generate",
+#                         elem_id="generate_button",
+#                         scale=0,
+#                     )
+#                 identitynet_strength_ratio = gr.Slider(
+#                     label="IdentityNet strength (for fidelity)",
+#                     minimum=0,
+#                     maximum=1.5,
+#                     step=0.05,
+#                     value=0.80,
+#                 )
+#                 adapter_strength_ratio = gr.Slider(
+#                     label="Image adapter strength (for detail)",
+#                     minimum=0,
+#                     maximum=1.5,
+#                     step=0.05,
+#                     value=0.80,
+#                 )
 
-            with gr.Column():
-                gallery = gr.Image(
-                    label="Generated Image",
-                )
-            generate_btn.click(
-                fn=process_image,
-                inputs=input_params,
-                outputs=gallery,
-            )
+#                 input_params = [
+#                     input_image,
+#                     prompt,
+#                     identitynet_strength_ratio,
+#                     adapter_strength_ratio,
+#                 ]
 
-        gr.HTML(_get_footer_message())
+#             with gr.Column():
+#                 gallery = gr.Image(
+#                     label="Generated Image",
+#                 )
+#             generate_btn.click(
+#                 fn=process_image,
+#                 inputs=input_params,
+#                 outputs=gallery,
+#             )
 
-    return web_ui
+#         gr.HTML(_get_footer_message())
 
+#     return web_ui
 
-def start_webui(
+def generate_ai_image(
     share: bool = False,
 ):
-    webui = get_web_ui()
-    webui.queue()
-    webui.launch(share=share)
+    prompt = "man eating"
+    identitynet_strength_ratio = 0.80
+    adapter_strength_ratio = 0.80
+
+    # Load the image
+    input_image = Image.open(image_path)
+
+    # Call the process_image function with the loaded image
+    process_image(
+        input_image,
+        prompt,
+        identitynet_strength_ratio,
+        adapter_strength_ratio
+    )
 
 
-start_webui()
+generate_ai_image()
